@@ -10,10 +10,12 @@
       padding: 2rem;
       background-color: #f9f9f9;
     }
-    input, button {
-      padding: 0.5rem;
+    label, select, input, button {
       font-size: 1rem;
-      margin-right: 0.5rem;
+      margin: 0.25rem;
+    }
+    input[type="number"] {
+      width: 6rem;
     }
     table {
       margin-top: 1rem;
@@ -28,34 +30,76 @@
   </style>
 </head>
 <body>
-  <h1>許可證查詢工具</h1>
-  <label for="licenseInput">請輸入許可證字號：</label>
-  <input type="text" id="licenseInput" placeholder="例如：衛部醫器製字第000000號" />
-  <button onclick="searchLicense()">查詢</button>
+  <h2>許可證字號查詢工具</h2>
+
+  <div>
+    <label>機關別：</label>
+    <select id="agency">
+      <option value="衛部">衛部</option>
+      <option value="衛署">衛署</option>
+    </select>
+
+    <label>類別：</label>
+    <select id="type">
+      <option value="製">製造</option>
+      <option value="輸">輸入</option>
+      <option value="陸輸">陸輸</option>
+    </select>
+
+    <label>等級：</label>
+    <select id="level">
+      <option value="壹登">登錄</option>
+      <option value="壹">第一等級</option>
+      <option value="">第二三等級</option>
+    </select>
+
+    <label>號碼：</label>
+    <input type="number" id="number" placeholder="123456" />
+
+    <button onclick="buildAndSearch()">查詢</button>
+  </div>
+
+  <p><strong>組合許可證字號：</strong><span id="fullLicense"></span></p>
+
   <div id="result"></div>
 
   <script>
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTOJR30cTwoZzjlFDJfks9u_4RNe5jjyceMVMnetuWsvUgYSZAYuKFOZqvRfrTbejHs8H31YDoIc2iX/pub?gid=1411787074&single=true&output=csv';
     let csvData = [];
 
-    // 讀取 CSV 並解析成陣列
     async function fetchCSV() {
       const response = await fetch(csvUrl);
       const text = await response.text();
-      const rows = text.split('\n').map(row => row.split(','));
+      const rows = text.trim().split('\n').map(row => row.split(','));
       csvData = rows;
     }
 
-    // 查詢許可證
-    function searchLicense() {
-      const licenseNumber = document.getElementById('licenseInput').value.trim();
-      if (!licenseNumber) {
-        alert('請輸入許可證字號');
+    function padNumber(num) {
+      return num.toString().padStart(6, '0');
+    }
+
+    function buildAndSearch() {
+      const agency = document.getElementById('agency').value;     // 衛部 or 衛署
+      const type = document.getElementById('type').value;         // 製、輸、陸輸
+      const level = document.getElementById('level').value;       // 壹登、壹、空白
+      const number = document.getElementById('number').value;
+
+      if (!number || isNaN(number)) {
+        alert('請輸入有效的號碼（六位數）');
         return;
       }
 
+      const paddedNumber = padNumber(number);
+      const license = `${agency}醫器${type}${level}字第${paddedNumber}號`;
+
+      document.getElementById('fullLicense').textContent = license;
+
+      searchLicense(license);
+    }
+
+    function searchLicense(licenseNumber) {
       const header = csvData[0];
-      const resultRow = csvData.find((row, index) => index !== 0 && row[0] === licenseNumber);
+      const resultRow = csvData.find((row, index) => index !== 0 && row[0].trim() === licenseNumber);
 
       const resultDiv = document.getElementById('result');
       resultDiv.innerHTML = '';
@@ -72,7 +116,7 @@
       }
     }
 
-    // 初始化讀取 CSV
+    // 初始化 CSV 資料
     fetchCSV();
   </script>
 </body>
