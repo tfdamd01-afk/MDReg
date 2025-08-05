@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>許可證查詢工具</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background-color: #f9f9f9;
+    }
+    input, button {
+      padding: 0.5rem;
+      font-size: 1rem;
+      margin-right: 0.5rem;
+    }
+    table {
+      margin-top: 1rem;
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <h1>許可證查詢工具</h1>
+  <label for="licenseInput">請輸入許可證字號：</label>
+  <input type="text" id="licenseInput" placeholder="例如：衛部醫器製字第000000號" />
+  <button onclick="searchLicense()">查詢</button>
+  <div id="result"></div>
+
+  <script>
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTOJR30cTwoZzjlFDJfks9u_4RNe5jjyceMVMnetuWsvUgYSZAYuKFOZqvRfrTbejHs8H31YDoIc2iX/pub?gid=1411787074&single=true&output=csv';
+    let csvData = [];
+
+    // 讀取 CSV 並解析成陣列
+    async function fetchCSV() {
+      const response = await fetch(csvUrl);
+      const text = await response.text();
+      const rows = text.split('\n').map(row => row.split(','));
+      csvData = rows;
+    }
+
+    // 查詢許可證
+    function searchLicense() {
+      const licenseNumber = document.getElementById('licenseInput').value.trim();
+      if (!licenseNumber) {
+        alert('請輸入許可證字號');
+        return;
+      }
+
+      const header = csvData[0];
+      const resultRow = csvData.find((row, index) => index !== 0 && row[0] === licenseNumber);
+
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = '';
+
+      if (resultRow) {
+        let html = '<table><thead><tr>';
+        header.forEach(col => html += `<th>${col}</th>`);
+        html += '</tr></thead><tbody><tr>';
+        resultRow.forEach(cell => html += `<td>${cell}</td>`);
+        html += '</tr></tbody></table>';
+        resultDiv.innerHTML = html;
+      } else {
+        resultDiv.textContent = '查無資料';
+      }
+    }
+
+    // 初始化讀取 CSV
+    fetchCSV();
+  </script>
+</body>
+</html>
