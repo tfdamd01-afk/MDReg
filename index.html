@@ -64,13 +64,13 @@
   <div id="result"></div>
 
   <script>
-    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTOJR30cTwoZzjlFDJfks9u_4RNe5jjyceMVMnetuWsvUgYSZAYuKFOZqvRfrTbejHs8H31YDoIc2iX/pub?gid=1411787074&single=true&output=csv';
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTOJR30cTwoZzjlFDJfks9u_4RNe5jjyceMVMnetuWsvUgYSZAYuKFOZqvRfrTbejHs8H31YDoIc2iX/pub?gid=1411787074&single=true&output=tsv';
     let csvData = [];
 
     async function fetchCSV() {
       const response = await fetch(csvUrl);
       const text = await response.text();
-      const rows = text.trim().split('\n').map(row => row.split(','));
+      const rows = text.trim().split('\n').map(row => row.split('\t'));
       csvData = rows;
     }
 
