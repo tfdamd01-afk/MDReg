@@ -124,7 +124,7 @@
       const license = `${agency}醫器${type}${level}字第${paddedNumber}號`;
       document.getElementById('fullLicense').textContent = license;
       const header = csvData[0];
-      const resultRow = csvData.find((row, index) => index !== 0 && row[0].trim() === licenseNumber);
+      const resultRow = csvData.find((row, index) => index !== 0 && row[0].trim() === license);
       var Lic = {};
       for (x = 0; x<header.length; x++){
         Lic[header[x]] = resultRow[x];
