@@ -127,16 +127,16 @@
       const resultRow = csvData.find((row, index) => index !== 0 && row[0].trim() === licenseNumber);
       var Lic = {};
       for (x = 0; x<header.length; x++){
-        Lic[header[x]] = resultRow[x]
+        Lic[header[x]] = resultRow[x];
       }
-      const html = `<p class="Main">主旨：有關${Lic["申請商名稱"]}申請「${Lic["中文品名"]}（${Lic["許可證字號"]}）」醫療器材許可證（下稱本許可證）展延一案，准予展延，復請查照。</p>`
-      html += `說明：`
-      html += `<p class="Content">一、復貴公司${toROCDate(submitDate)}許可證展延申請書，依醫療器材管理法第27條第1項規定申請許可證展延案（案號：${docNum}）辦理。</p>`
-      html += `<p class="Content">二、本許可證准予展延有效期限至${toROCDate(addFiveYears(Lic["有效日期"]))}。</p>`
-      html += `<p class="Content">三、隨函檢還本許可證及編號OOOOOO繳款收據正本各1份。</p>`
-      html += `<p class="Content">四、附註：</p>`
-      html += `<p class="Content"> （一）受處分人如對本處分不服，得依訴願法第14條第1項、第58條第1項規定，自本函送達之次日起30日內，檢送訴願書至本部，由本部層轉訴願管轄機關行政院提起訴願。</p>`
-      html += `<p class="Content"> （二）訴願人繕具訴願書，應載明第56條第1項所列事項，由訴願人或代理人簽名或蓋章；並依同條第2項規定，檢附本函影本。</p>`
+      let html = `<p class="Main">主旨：有關${Lic["申請商名稱"]}申請「${Lic["中文品名"]}（${Lic["許可證字號"]}）」醫療器材許可證（下稱本許可證）展延一案，准予展延，復請查照。</p>`;
+      html += `說明：`;
+      html += `<p class="Content">一、復貴公司${toROCDate(submitDate)}許可證展延申請書，依醫療器材管理法第27條第1項規定申請許可證展延案（案號：${docNum}）辦理。</p>`;
+      html += `<p class="Content">二、本許可證准予展延有效期限至${toROCDate(addFiveYears(Lic["有效日期"]))}。</p>`;
+      html += `<p class="Content">三、隨函檢還本許可證及編號OOOOOO繳款收據正本各1份。</p>`;
+      html += `<p class="Content">四、附註：</p>`;
+      html += `<p class="Content"> （一）受處分人如對本處分不服，得依訴願法第14條第1項、第58條第1項規定，自本函送達之次日起30日內，檢送訴願書至本部，由本部層轉訴願管轄機關行政院提起訴願。</p>`;
+      html += `<p class="Content"> （二）訴願人繕具訴願書，應載明第56條第1項所列事項，由訴願人或代理人簽名或蓋章；並依同條第2項規定，檢附本函影本。</p>`;
       document.getElementById('result').innerHTML = html;
     }
 
