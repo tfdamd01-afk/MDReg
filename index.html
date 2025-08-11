@@ -62,6 +62,8 @@
     <input type="text" id="submitName" />
     <label>母文文號：</label>
     <input type="number" id="docNum" />
+    <label>收據編號：</label>
+    <input type="text" id="receiptNumber" />
     
     
     
@@ -113,13 +115,22 @@
       const type = document.getElementById('type').value;         // 製、輸、陸輸
       const level = document.getElementById('level').value;       // 壹登、壹、空白
       const number = document.getElementById('number').value;
-      const submitDate = document.getElementById('submitDate').value; //廠商發文日期
+      const submitDate = document.getElementById('submitDate').value.replaceAll("-","/"); //廠商發文日期
       const submitDoc = document.getElementById('submitName').value; //廠商發文字號
       const docNum = document.getElementById('docNum').value; //文號
+      let receiptNumber = document.getElementById('receiptNumber').value; //收據編號
+      
       if (!number || isNaN(number)) {
         alert('請輸入有效的號碼（六位數）');
         return;
       }
+
+      if isNaN(receiptNumber){
+        receiptNumber = "正本1份";
+      }else{
+        receiptNumber = `及編號${receiptNumber}繳款收據正本各1份`;
+      }
+      
       const paddedNumber = padNumber(number);
       const license = `${agency}醫器${type}${level}字第${paddedNumber}號`;
       document.getElementById('fullLicense').textContent = license;
@@ -133,7 +144,7 @@
       html += `說明：`;
       html += `<p class="Content">一、復貴公司${toROCDate(submitDate)}許可證展延申請書，依醫療器材管理法第27條第1項規定申請許可證展延案（案號：${docNum}）辦理。</p>`;
       html += `<p class="Content">二、本許可證准予展延有效期限至${toROCDate(addFiveYears(Lic["有效日期"]))}。</p>`;
-      html += `<p class="Content">三、隨函檢還本許可證及編號OOOOOO繳款收據正本各1份。</p>`;
+      html += `<p class="Content">三、隨函檢還本許可證${receiptNumber}。</p>`;
       html += `<p class="Content">四、附註：</p>`;
       html += `<p class="Content"> （一）受處分人如對本處分不服，得依訴願法第14條第1項、第58條第1項規定，自本函送達之次日起30日內，檢送訴願書至本部，由本部層轉訴願管轄機關行政院提起訴願。</p>`;
       html += `<p class="Content"> （二）訴願人繕具訴願書，應載明第56條第1項所列事項，由訴願人或代理人簽名或蓋章；並依同條第2項規定，檢附本函影本。</p>`;
