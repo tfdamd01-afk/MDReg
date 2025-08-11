@@ -54,7 +54,7 @@
     </select>
 
     <label>號碼：</label>
-    <input type="number" id="number" placeholder="123456" />
+    <input type="number" id="number" placeholder="024852" />
     <br/>
     <label>廠商來文日期：</label>
     <input type="date" id="submitDate" />
@@ -64,10 +64,10 @@
     <input type="number" id="docNum" />
     <label>收據編號：</label>
     <input type="text" id="receiptNumber" />
+    <br/>
     
     
-    
-    <button onclick="buildAndSearch()">查詢</button>
+    <button onclick="buildAndSearch()">查詢許可證資訊</button>
     <button onclick="buildExtendDoc()">產生展延案文稿</button>
   </div>
 
@@ -125,7 +125,7 @@
         return;
       }
 
-      if isNaN(receiptNumber){
+      if (isNaN(receiptNumber)){
         receiptNumber = "正本1份";
       }else{
         receiptNumber = `及編號${receiptNumber}繳款收據正本各1份`;
