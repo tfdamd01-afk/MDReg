@@ -100,7 +100,11 @@
     function searchLicense(licenseNumber) {
       const header = csvData[0];
       const resultRow = csvData.find((row, index) => index !== 0 && row[0].trim() === licenseNumber);
-
+      var Lic = {};
+      for (x = 0; x<header.length; x++){
+        Lic[header[x]] = resultRow[x]
+      }
+      console.log(Lic)
       const resultDiv = document.getElementById('result');
       resultDiv.innerHTML = '';
 
