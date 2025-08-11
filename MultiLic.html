@@ -1,0 +1,116 @@
+<style>
+  .license-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .full-license {
+    min-width: 280px;
+    font-weight: bold;
+    color: #333;
+  }
+  .result {
+    margin-top: 4px;
+    font-size: 14px;
+    color: #555;
+  }
+</style>
+
+<div id="licenseContainer">
+  <div class="license-row">
+    <select class="partA">
+      <option value="衛部">衛部</option>
+      <option value="衛署">衛署</option>
+    </select>
+    <select class="partB">
+      <option value="製造">製造</option>
+      <option value="輸入">輸入</option>
+      <option value="陸輸">陸輸</option>
+    </select>
+    <select class="partC">
+      <option value="登錄">登錄</option>
+      <option value="第一等級">第一等級</option>
+      <option value="第二三等級">第二三等級</option>
+    </select>
+    <input type="number" class="partD" placeholder="號碼(6位數)">
+    <span class="full-license"></span>
+    <button type="button" class="removeBtn">－</button>
+    <div class="result"></div>
+  </div>
+</div>
+
+<button id="addBtn" type="button">＋ 新增許可證</button>
+
+<script>
+  const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTOJR30cTwoZzjlFDJfks9u_4RNe5jjyceMVMnetuWsvUgYSZAYuKFOZqvRfrTbejHs8H31YDoIc2iX/pub?gid=1411787074&single=true&output=csv";
+  let sheetData = [];
+
+  // 取得 Google Sheet 資料
+  fetch(sheetUrl)
+    .then(res => res.text())
+    .then(csv => {
+      sheetData = csv.split("\n").map(row => row.split(","));
+    });
+
+  function generateLicense(row) {
+    const partA = row.querySelector('.partA').value;
+    const partB = row.querySelector('.partB').value;
+    const partC = row.querySelector('.partC').value;
+    let partD = row.querySelector('.partD').value;
+
+    let fullA = (partA === '衛部') ? '衛部醫器' : '衛署醫器';
+    let fullB = (partB === '製造') ? '製' : (partB === '輸入') ? '輸' : '陸輸';
+    let fullC = (partC === '登錄') ? '壹登' : (partC === '第一等級') ? '壹' : '';
+
+    partD = partD.padStart(6, '0');
+
+    const fullLicense = `${fullA}${fullB}${fullC}字第${partD}號`;
+    row.querySelector('.full-license').textContent = fullLicense;
+
+    searchLicense(fullLicense, row);
+  }
+
+  // 查詢 Google Sheet
+  function searchLicense(licenseNumber, row) {
+    const resultDiv = row.querySelector('.result');
+    if (!licenseNumber || sheetData.length === 0) return;
+
+    let found = sheetData.find(r => r[0] === licenseNumber); // 假設第一欄是許可證字號
+    if (found) {
+      resultDiv.textContent = `產品名稱：${found[1]}，廠商：${found[2]}`; // 根據你的欄位順序改
+    } else {
+      resultDiv.textContent = "查無資料";
+    }
+  }
+
+  function bindRowEvents(row) {
+    const inputs = row.querySelectorAll('.partA, .partB, .partC, .partD');
+    inputs.forEach(input => {
+      input.addEventListener('input', () => generateLicense(row));
+    });
+
+    row.querySelector('.removeBtn').addEventListener('click', () => {
+      if (container.children.length > 1) {
+        row.remove();
+      }
+    });
+
+    generateLicense(row);
+  }
+
+  const container = document.getElementById('licenseContainer');
+  const addBtn = document.getElementById('addBtn');
+
+  addBtn.addEventListener('click', () => {
+    const firstRow = container.querySelector('.license-row');
+    const newRow = firstRow.cloneNode(true);
+    newRow.querySelector('.partD').value = '';
+    newRow.querySelector('.full-license').textContent = '';
+    newRow.querySelector('.result').textContent = '';
+    bindRowEvents(newRow);
+    container.appendChild(newRow);
+  });
+
+  bindRowEvents(container.querySelector('.license-row'));
+</script>
