@@ -349,13 +349,16 @@
       let receipt = $('receiptNumber').value.trim();
       const receiptDesc = receipt ? `及編號${receipt}繳款收據正本各1份` : '正本1份';
       let submitName = $('submitName').value.trim();
+      if (submitName != "") {
+        submitName = `${submitName}號`;
+      }
       
       const doc = {
         '申請商名稱': lic['申請商名稱'] || '',
         '中文品名': lic['中文品名'] || '',
         '許可證字號': lic['許可證字號'] || '',
         '來文日期ROC': submitROC,
-        '來文字號': `${submitName}號` || '',
+        '來文字號': submitName,
         '案號': $('docNum').value || '',
         '有效期限ROC': validROC,
         '收據敘述': receiptDesc,
