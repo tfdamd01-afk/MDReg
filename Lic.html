@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>醫療器材 OpenData 單頁工具</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #121a33;
+      --muted: #8ea1c0;
+      --ink: #e6edf7;
+      --accent: #7cc4ff;
+      --ok: #19c37d;
+      --warn: #ffcc66;
+      --err: #ff6b6b;
+      --rounded: 16px;
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans TC", Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 20% -10%, #1b2443 0%, var(--bg) 55%);
+      color: var(--ink);
+    }
+    .wrap { max-width: 1100px; margin: 32px auto 120px; padding: 0 16px; }
+    header { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
+    .logo { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg,#6fb1fc,#4364f7,#3f51b5); box-shadow: 0 6px 30px rgba(67,100,247,.35); }
+    h1 { font-size: clamp(20px, 4vw, 28px); font-weight: 800; margin: 0; letter-spacing: .5px; }
+    .sub { color: var(--muted); font-size: 14px; }
+
+    .card { background: rgba(18,26,51,.75); backdrop-filter: blur(6px); border: 1px solid rgba(124,196,255,.15); border-radius: var(--rounded);
+      box-shadow: 0 4px 40px rgba(0,0,0,.25); padding: 18px; }
+
+    .row { display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; }
+    @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
+
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    button, .btn {
+      appearance: none; border: 0; padding: 10px 14px; border-radius: 12px; font-weight: 700; cursor: pointer;
+      background: linear-gradient(180deg,#2a3b6a,#1f2a4d); color: #dbe8ff; border: 1px solid rgba(124,196,255,.25);
+      transition: transform .05s ease, box-shadow .2s ease; box-shadow: 0 6px 16px rgba(0,0,0,.25);
+    }
+    button:hover { box-shadow: 0 8px 24px rgba(124,196,255,.2); }
+    button:active { transform: translateY(1px); }
+    .btn-primary { background: linear-gradient(180deg, #3e7df9, #2f66da); border-color: rgba(124,196,255,.6); }
+    .btn-ghost { background: transparent; border-color: rgba(124,196,255,.25); }
+
+    .kv { display:grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-size: 14px; }
+    .kv div:nth-child(odd) { color: var(--muted); }
+
+    .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .pill { display:inline-flex; align-items:center; gap:6px; padding: 6px 10px; border: 1px solid rgba(124,196,255,.25); border-radius: 999px; font-size: 12px; color:#dbe8ff; }
+
+    .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .log { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.45; background: #0f152b; color:#cfe3ff;
+      border: 1px dashed rgba(124,196,255,.35); border-radius: 12px; padding: 10px; height: 140px; overflow:auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { border-bottom: 1px solid rgba(124,196,255,.15); padding: 8px 10px; text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    th:nth-child(2), td:nth-child(2) { text-align: left; }
+    thead th { position: sticky; top: 0; background: #111936; z-index: 1; }
+    tbody tr:hover { background: rgba(124,196,255,.06); }
+
+    .stat { display:flex; gap:12px; flex-wrap:wrap; }
+    .stat .box { background: #0f1731; border:1px solid rgba(124,196,255,.25); border-radius: 12px; padding: 12px 14px; }
+    .stat .big { font-size: 22px; font-weight: 800; }
+
+    .mt-12 { margin-top: 12px; }
+    .mt-16 { margin-top: 16px; }
+    .mt-24 { margin-top: 24px; }
+    .sr { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  </style>
+  <!-- Libraries: PapaParse (CSV), JSZip (unzip), SheetJS (xlsx export) -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1>醫療器材 OpenData 單頁工具</h1>
+        <div class="sub">將原 Python 程式改為 HTML + JavaScript，直接在瀏覽器完成下載、解析、統計與樞紐表。</div>
+      </div>
+    </header>
+
+    <section class="row">
+      <div class="card">
+        <h2 style="margin-top:0">資料來源</h2>
+        <div class="controls">
+          <button id="btnFetch" class="btn-primary">一鍵取得 OpenData</button>
+          <button id="btnMakePivot" class="btn">重新計算</button>
+          <button id="btnExportPivot" class="btn-ghost">匯出樞紐表 (CSV)</button>
+          <button id="btnExportXLSX" class="btn-ghost">匯出 RecheckDB.xlsx</button>
+          <span class="pill" id="pillDate">更新日期：--</span>
+        </div>
+        <div class="hint">若因 CORS 無法自動下載，可改用下方「手動載入」上傳 <code>68_2.csv</code> 或壓縮檔，以及複查名單 CSV。</div>
+
+        <div class="grid-2 mt-16">
+          <div>
+            <label class="pill" for="fileZip">手動載入：OpenData 壓縮檔 (opendata.zip)</label>
+            <input type="file" id="fileZip" accept=".zip" />
+            <div class="hint">或直接上傳 <code>68_2.csv</code>：<input type="file" id="fileCSV" accept=".csv" /></div>
+          </div>
+          <div>
+            <label class="pill" for="fileFinish">手動載入：完成複查清單 CSV</label>
+            <input type="file" id="fileFinish" accept=".csv,.txt" />
+            <div class="hint">若未提供，會自動線上下載 Google Sheet。</div>
+          </div>
+        </div>
+
+        <div class="mt-16">
+          <div class="kv">
+            <div>資料集：</div><div><a id="srcLink" class="btn-ghost" href="http://data.fda.gov.tw/frontsite/data/DataAction.do?method=doDetail&infoId=68" target="_blank" rel="noopener">醫療器材許可證 OpenData</a></div>
+            <div>筆數：</div><div id="countInfo">--</div>
+            <div>統計狀態：</div><div id="statusInfo">尚未開始</div>
+          </div>
+        </div>
+
+        <div class="mt-16 log" id="log" aria-live="polite"></div>
+      </div>
+
+      <div class="card">
+        <h2 style="margin-top:0">統計摘要</h2>
+        <div class="stat mt-12">
+          <div class="box"><div class="muted">許可證 (非登錄)</div><div class="big" id="statLic">--</div></div>
+          <div class="box"><div class="muted">登錄 (逕予/自主)</div><div class="big" id="statList">--</div></div>
+        </div>
+        <div class="mt-16">
+          <pre id="meta" style="white-space:pre-wrap; margin:0; color:#cfe3ff;"></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="card mt-24">
+      <h2 style="margin-top:0">樞紐表（排除已逾期、已註銷）</h2>
+      <div id="tableWrap" class="mt-12"></div>
+    </section>
+  </div>
+
+<script>
+/*********************
+ * 工具函式
+ *********************/
+const logEl = document.getElementById('log');
+function log(msg, kind = 'info') {
+  const color = kind === 'ok' ? '#19c37d' : kind === 'warn' ? '#ffcc66' : kind === 'err' ? '#ff6b6b' : '#cfe3ff';
+  const time = new Date().toLocaleTimeString();
+  logEl.innerHTML += `<div style="color:${color}">[${time}] ${msg}</div>`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function fmt(n) { return n.toLocaleString('en-US'); }
+function csvToArrayBuffer(csvStr) { return new TextEncoder().encode(csvStr).buffer; }
+
+// 文字前 3 字 & 替換
+function normalizeCity(raw = '') {
+  let s = String(raw || '').trim();
+  s = s.replace(/巿/g, '市').replace(/台/g, '臺').replace(/南部科|南科高/g, '高雄市').replace(/新竹科/g, '新竹市');
+  return s.slice(0, 3);
+}
+function licType(x = '') {
+  const s = String(x);
+  if (s.includes('製')) {
+    return s.includes('外') ? '外銷專用' : '國產';
+  } else if (s.includes('輸')) {
+    return s.includes('陸') ? '陸輸' : '輸入';
+  }
+  return '';
+}
+function isExpiredStr(dateStr = '') {
+  const s = String(dateStr).trim();
+  if (!s) return '';
+  // 期待格式 yyyy/mm/dd
+  const m = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (!m) return '';
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d > new Date() ? '' : '已逾期';
+}
+function isListing(x = '') {
+  const s = String(x);
+  if (s.includes('登')) return s.includes('a') ? '自主登錄' : '逕予登錄';
+  return '非登錄';
+}
+function isGMP(x = '') {
+  const s = String(x || '');
+  return s.startsWith('GMP') || s.startsWith('QMS') || s.startsWith('QSD') ? '是' : '否';
+}
+
+/*********************
+ * 全域資料模型
+ *********************/
+let rawRows = [];      // 原始 68_2.csv 資料列（物件陣列）
+let finishList = null; // 完成複查名單（Set）
+let renewDate = '--';  // 最後更新日期
+
+// 欄位常數（避免 typo）
+const COL = {
+  licNo: '許可證字號',
+  cancelStatus: '註銷狀態',
+  cancelDate: '註銷日期',
+  validTo: '有效日期',
+  issueDate: '發證日期',
+  kind: '許可證種類',
+  class: '醫療器材級數',
+  cname: '中文品名',
+  ename: '英文品名',
+  applicant: '申請商名稱',
+  addr: '申請商地址',
+  main1: '醫器主類別一', main2: '醫器主類別二', main3: '醫器主類別三',
+  sub1: '醫器次類別一', sub2: '醫器次類別二', sub3: '醫器次類別三',
+  manuPermit: '製造許可登錄編號',
+  country: '製造廠國別',
+};
+
+/*********************
+ * 下載與解析
+ *********************/
+const URLS = {
+  detail: 'http://data.fda.gov.tw/frontsite/data/DataAction.do?method=doDetail&infoId=68',
+  zip: 'http://data.fda.gov.tw/opendata/exportDataList.do?method=ExportData&InfoId=68&logType=2',
+  finish: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRG4_P68_FCMwt04CNktdLef00NLLPk1fFMWb9UK_T6WFpzjm4T8XucyDJjsD0sPbBjwBvvg_pw5w6-/pub?output=csv',
+};
+
+async function fetchRenewDate() {
+  try {
+    const resp = await fetch(URLS.detail, { mode: 'cors' });
+    const html = await resp.text();
+    const match = html.split('最後更新日期</th>')[1]?.split('<td>')[1]?.split('</td>')[0];
+    if (match) renewDate = match.replace(/\//g, '.');
+    document.getElementById('pillDate').textContent = `更新日期：${renewDate}`;
+    log(`OpenData 頁面解析更新日期：${renewDate}`, 'ok');
+  } catch (e) {
+    log('無法自動取得更新日期（可能為 CORS 限制）。', 'warn');
+  }
+}
+
+async function fetchFinishListIfNeeded() {
+  if (finishList) return finishList;
+  try {
+    const resp = await fetch(URLS.finish, { mode: 'cors' });
+    const text = await resp.text();
+    const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    finishList = new Set(lines);
+    log(`完成複查清單下載完成，共 ${fmt(finishList.size)} 筆。`, 'ok');
+  } catch (e) {
+    log('無法線上取得完成複查清單（可於右側手動上傳 CSV）。', 'warn');
+    finishList = new Set();
+  }
+  return finishList;
+}
+
+async function fetchAndParseZip() {
+  const res = await fetch(URLS.zip, { mode: 'cors' });
+  const ab = await res.arrayBuffer();
+  const zip = await JSZip.loadAsync(ab);
+  // 尋找 68_2.csv
+  const fileEntry = Object.values(zip.files).find(f => f.name.endsWith('68_2.csv'));
+  if (!fileEntry) throw new Error('zip 內找不到 68_2.csv');
+  const csvStr = await fileEntry.async('string');
+  return parseCSV(csvStr);
+}
+
+function parseCSV(csvStr) {
+  const { data, errors } = Papa.parse(csvStr, { header: true, skipEmptyLines: true, transformHeader: h => h.trim() });
+  if (errors && errors.length) log(`CSV 解析警告：${errors.length} 項`, 'warn');
+  return data.map(row => Object.fromEntries(Object.entries(row).map(([k, v]) => [k.trim(), (v ?? '').toString().trim()])));
+}
+
+/*********************
+ * 加工計算（等同原 Python）
+ *********************/
+function transformRows(rows) {
+  // 產生主/次類別合併欄位、逾期、證別、登錄、縣市別、是否取得製造許可、完成複查
+  return rows.map(r => {
+    const main = [r[COL.main1]||'', r[COL.main2]||'', r[COL.main3]||''].filter(Boolean).join(';');
+    const sub  = [r[COL.sub1]||'',  r[COL.sub2]||'',  r[COL.sub3]||''].filter(Boolean).join(';');
+    const row = { ...r };
+    row['醫器主類別'] = main;
+    row['醫器次類別'] = sub;
+    row['已逾期'] = isExpiredStr(r[COL.validTo]);
+    row['證別'] = licType(r[COL.licNo]);
+    row['登錄'] = isListing(r[COL.licNo]);
+    row['縣市別'] = normalizeCity(r[COL.addr]);
+    row['是否取得製造許可'] = isGMP(r[COL.manuPermit]);
+    row['已完成複查'] = finishList?.has(r[COL.licNo]) ? 'Y' : 'N';
+    return row;
+  });
+}
+
+function buildPivot(rows) {
+  // df2：未逾期 + 未註銷
+  const df2 = rows.filter(r => r['已逾期'] !== '已逾期' && !String(r[COL.cancelStatus]||'').trim());
+  // 類別欄位收集
+  const classVals = Array.from(new Set(df2.map(r => r[COL.class]).filter(v => v !== '' )));
+  // 將級數自然排序（數字在前、字串其次）
+  classVals.sort((a,b)=>{
+    const an = Number(a), bn = Number(b);
+    const aNum = !Number.isNaN(an), bNum = !Number.isNaN(bn);
+    if (aNum && bNum) return an - bn;
+    if (aNum) return -1; if (bNum) return 1;
+    return String(a).localeCompare(String(b),'zh-Hant');
+  });
+
+  const key = r => `${r['登錄']}||${r['證別']}`;
+  const groups = new Map();
+  for (const r of df2) {
+    const k = key(r);
+    if (!groups.has(k)) groups.set(k, { label: [r['登錄'], r['證別']], cells: new Map(), licSet: new Set(), listSet: new Set() });
+    const g = groups.get(k);
+    const cls = r[COL.class] || '';
+    const id = r[COL.licNo];
+    if (!g.cells.has(cls)) g.cells.set(cls, new Set());
+    g.cells.get(cls).add(id);
+    // 累計 lic vs list (在 df2 範圍內)
+    if (r['登錄'] === '非登錄') g.licSet.add(id); else g.listSet.add(id);
+  }
+
+  // 統計總數（去重）
+  const licTotal = new Set();
+  const listTotal = new Set();
+  for (const g of groups.values()) {
+    for (const id of g.licSet) licTotal.add(id);
+    for (const id of g.listSet) listTotal.add(id);
+  }
+
+  // 組成表格資料
+  const rowsOut = [];
+  const colTotals = new Map();
+  for (const cls of classVals) colTotals.set(cls, 0);
+  let grand = 0;
+
+  const sortedGroups = Array.from(groups.values()).sort((a,b)=>{
+    // 排序：登錄（非登錄→逕予登錄→自主登錄），其次 證別
+    const order = v => v === '非登錄' ? 0 : v === '逕予登錄' ? 1 : v === '自主登錄' ? 2 : 3;
+    const aKey = order(a.label[0]) - order(b.label[0]);
+    if (aKey !== 0) return aKey;
+    return a.label[1].localeCompare(b.label[1], 'zh-Hant');
+  });
+
+  for (const g of sortedGroups) {
+    const row = { 登錄: g.label[0], 證別: g.label[1] };
+    let rowSum = 0;
+    for (const cls of classVals) {
+      const cnt = g.cells.get(cls)?.size || 0;
+      row[cls] = cnt === 0 ? '-' : cnt;
+      if (cnt) {
+        rowSum += cnt;
+        colTotals.set(cls, colTotals.get(cls) + cnt);
+        grand += cnt;
+      }
+    }
+    row['All'] = rowSum || '-';
+    rowsOut.push(row);
+  }
+
+  // 欄位總計列
+  const totalRow = { 登錄: 'All', 證別: 'All' };
+  for (const cls of classVals) totalRow[cls] = colTotals.get(cls) || '-';
+  totalRow['All'] = grand || '-';
+  rowsOut.push(totalRow);
+
+  return { rows: rowsOut, columns: ['登錄','證別', ...classVals, 'All'], licNum: licTotal.size, listNum: listTotal.size };
+}
+
+function renderTable(pivot) {
+  const { rows, columns } = pivot;
+  const wrap = document.getElementById('tableWrap');
+  if (!rows || rows.length === 0) { wrap.innerHTML = '<div class="hint">尚無資料</div>'; return; }
+  let html = '<div style="overflow:auto; max-height: 60vh; border:1px solid rgba(124,196,255,.2); border-radius:12px">';
+  html += '<table><thead><tr>' + columns.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+  for (const r of rows) {
+    html += '<tr>' + columns.map((c,i) => {
+      const v = r[c] ?? '';
+      const align = i < 2 ? 'left' : 'right';
+      return `<td style="text-align:${align}">${typeof v === 'number' ? fmt(v) : v}</td>`;
+    }).join('') + '</tr>';
+  }
+  html += '</tbody></table></div>';
+  wrap.innerHTML = html;
+}
+
+/*********************
+ * 匯出
+ *********************/
+function exportPivotCSV(pivot) {
+  if (!pivot || !pivot.rows) return;
+  const cols = pivot.columns;
+  const lines = [cols.join(',')];
+  for (const r of pivot.rows) {
+    lines.push(cols.map(c => r[c] ?? '').join(','));
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pivot.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function exportRecheckXLSX(rows) {
+  if (!rows || !rows.length) return;
+  // 模擬原 Python（曾以註解存在）：僅級數==1 且部分欄位、去重
+  const pick = ['許可證字號','中文品名','英文品名','醫療器材級數','醫器次類別一','申請商名稱','申請商地址','註銷狀態','有效日期'];
+  const filtered = rows.filter(r => String(r[COL.class]) === '1');
+  const seen = new Set();
+  const out = [];
+  for (const r of filtered) {
+    const key = r['許可證字號'];
+    if (seen.has(key)) continue; seen.add(key);
+    const o = {}; pick.forEach(k => o[k] = r[k] ?? '');
+    out.push(o);
+  }
+  const ws = XLSX.utils.json_to_sheet(out);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'RecheckDB');
+  XLSX.writeFile(wb, 'RecheckDB.xlsx');
+}
+
+/*********************
+ * 主流程
+ *********************/
+async function computeAndRender() {
+  if (!rawRows.length) { log('尚未載入資料。', 'warn'); return; }
+  await fetchFinishListIfNeeded();
+  const rows2 = transformRows(rawRows);
+  const pivot = buildPivot(rows2);
+  renderTable(pivot);
+  document.getElementById('countInfo').textContent = `${fmt(rawRows.length)} 筆原始；${fmt(pivot.rows.length-1)} 列分組`;
+  document.getElementById('statLic').textContent = fmt(pivot.licNum);
+  document.getElementById('statList').textContent = fmt(pivot.listNum);
+  const meta = `===許可證資料分析（排除已逾期、已註銷及重複之許可證字號）===\n開放資料集更新日期：${renewDate}\n許可證：${fmt(pivot.licNum)}張 ／ 登錄：${fmt(pivot.listNum)}件`;
+  document.getElementById('meta').textContent = meta;
+  document.getElementById('statusInfo').textContent = '完成';
+  log('樞紐表與統計已產生。', 'ok');
+  // 快取最近一次的 pivot 供匯出
+  window.__lastPivot = pivot;
+  window.__lastRows = rows2;
+}
+
+async function handleFetchAll() {
+  document.getElementById('statusInfo').textContent = '下載中…';
+  log('開始下載資料…');
+  await fetchRenewDate();
+  try {
+    log('下載 OpenData zip…');
+    rawRows = await fetchAndParseZip();
+    log(`解析完成：${fmt(rawRows.length)} 筆`, 'ok');
+  } catch (e) {
+    log('自動下載/解析失敗，可能為 CORS 限制。請改用「手動載入」。', 'err');
+    return;
+  }
+  await computeAndRender();
+}
+
+/*********************
+ * 事件綁定
+ *********************/
+const btnFetch = document.getElementById('btnFetch');
+const btnMakePivot = document.getElementById('btnMakePivot');
+const btnExportPivot = document.getElementById('btnExportPivot');
+const btnExportXLSX = document.getElementById('btnExportXLSX');
+
+btnFetch.addEventListener('click', handleFetchAll);
+btnMakePivot.addEventListener('click', computeAndRender);
+btnExportPivot.addEventListener('click', () => exportPivotCSV(window.__lastPivot));
+btnExportXLSX.addEventListener('click', () => exportRecheckXLSX(window.__lastRows || rawRows));
+
+// 手動載入：zip
+const fileZip = document.getElementById('fileZip');
+fileZip.addEventListener('change', async (e) => {
+  const f = e.target.files?.[0]; if (!f) return;
+  log(`讀取壓縮檔：${f.name}`);
+  const ab = await f.arrayBuffer();
+  const zip = await JSZip.loadAsync(ab);
+  const fileEntry = Object.values(zip.files).find(f => f.name.endsWith('68_2.csv'));
+  if (!fileEntry) { log('zip 內找不到 68_2.csv', 'err'); return; }
+  const csvStr = await fileEntry.async('string');
+  rawRows = parseCSV(csvStr);
+  log(`解析完成：${fmt(rawRows.length)} 筆`, 'ok');
+});
+
+// 手動載入：直接 CSV
+const fileCSV = document.getElementById('fileCSV');
+fileCSV.addEventListener('change', async (e) => {
+  const f = e.target.files?.[0]; if (!f) return;
+  log(`讀取 CSV：${f.name}`);
+  const text = await f.text();
+  rawRows = parseCSV(text);
+  log(`解析完成：${fmt(rawRows.length)} 筆`, 'ok');
+});
+
+// 手動載入：完成複查名單
+const fileFinish = document.getElementById('fileFinish');
+fileFinish.addEventListener('change', async (e) => {
+  const f = e.target.files?.[0]; if (!f) return;
+  const text = await f.text();
+  const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  finishList = new Set(lines);
+  log(`完成複查清單載入：${fmt(finishList.size)} 筆`, 'ok');
+});
+
+</script>
+</body>
+</html>
