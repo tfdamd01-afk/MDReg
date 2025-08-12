@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>許可證查詢工具</title>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --brand: #2563eb;
+      --brand-ghost: #eff6ff;
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 980px; margin: 0 auto; padding: 2rem 1rem;
+    }
+    h1 { font-size: 1.5rem; margin: 0 0 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+      padding: 1rem;
+    }
+
+    form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem 1rem; align-items: end; }
+    label { font-size: .9rem; color: var(--muted); display: block; margin-bottom: .25rem; }
+    select, input[type="text"], input[type="date"], input[type="number"], input[type="search"] {
+      width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: .6rem .7rem; font-size: 1rem; background: #fff;
+    }
+    input[readonly] { background: #f9fafb; }
+    .row-span-2 { grid-row: span 2; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
+    button {
+      appearance: none; border: 1px solid var(--brand); background: var(--brand);
+      color: #fff; border-radius: 10px; padding: .6rem .9rem; font-size: 1rem; cursor: pointer;
+    }
+    button.secondary { background: var(--brand-ghost); color: var(--brand); }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+
+    .status { margin-top: .5rem; font-size: .9rem; color: var(--muted); }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: var(--card); border-radius: 12px; overflow: hidden; }
+    th, td { border: 1px solid var(--border); padding: .6rem .5rem; text-align: left; vertical-align: top; }
+    th { background: #f3f4f6; font-weight: 600; }
+
+    .doc { margin-top: 1rem; }
+    .doc p { margin: .4rem 0; }
+    .doc .title { font-weight: 700; }
+
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>許可證字號查詢工具</h1>
+
+    <section aria-labelledby="formTitle" class="card">
+      <h2 id="formTitle" class="sr-only">查詢條件</h2>
+      <form id="licenseForm">
+        <div>
+          <label for="agency">機關別</label>
+          <select id="agency" name="agency" required>
+            <option value="衛部">衛部</option>
+            <option value="衛署">衛署</option>
+          </select>
+        </div>
+        <div>
+          <label for="type">類別</label>
+          <select id="type" name="type" required>
+            <option value="製">製造</option>
+            <option value="輸">輸入</option>
+            <option value="陸輸">陸輸</option>
+          </select>
+        </div>
+        <div>
+          <label for="level">等級</label>
+          <select id="level" name="level" required>
+            <option value="壹登">登錄</option>
+            <option value="壹" selected>第一等級</option>
+            <option value="">第二三等級</option>
+          </select>
+        </div>
+        <div>
+          <label for="number">號碼（6 碼）</label>
+          <input id="number" name="number" inputmode="numeric" pattern="\\d{6}" maxlength="6" placeholder="024852" required />
+        </div>
+
+        <div>
+          <label for="submitDate">廠商來文日期</label>
+          <input type="date" id="submitDate" name="submitDate" />
+        </div>
+        <div>
+          <label for="submitName">廠商來文字號</label>
+          <input type="text" id="submitName" name="submitName" />
+        </div>
+        <div>
+          <label for="docNum">母文文號</label>
+          <input id="docNum" name="docNum" inputmode="numeric" />
+        </div>
+        <div>
+          <label for="receiptNumber">收據編號</label>
+          <input type="text" id="receiptNumber" name="receiptNumber" placeholder="若留空，預設為正本1份" />
+        </div>
+
+        <div class="actions" style="grid-column: 1 / -1;">
+          <button id="btnSearch" type="submit" disabled>查詢許可證資訊</button>
+          <button id="btnExtend" type="button" class="secondary" disabled>產生展延案文稿</button>
+        </div>
+        <div id="status" class="status" role="status" aria-live="polite">資料載入中...</div>
+      </form>
+    </section>
+
+    <p><strong>完整許可證字號：</strong><span id="fullLicense" aria-live="polite"></span></p>
+
+    <section id="result" class="card" aria-live="polite"></section>
+  </div>
+
+  <template id="docTemplate">
+    <div class="doc">
+      <p class="title">主旨：有關{{申請商名稱}}申請「{{中文品名}}（{{許可證字號}}）」醫療器材許可證（下稱本許可證）展延一案，准予展延，復請查照。</p>
+      <p>說明：</p>
+      <p>一、復貴公司{{來文日期ROC}}許可證展延申請書，依醫療器材管理法第27條第1項規定申請許可證展延案（案號：{{案號}}）辦理。</p>
+      <p>二、本許可證准予展延有效期限至{{有效期限ROC}}。</p>
+      <p>三、隨函檢還本許可證{{收據敘述}}。</p>
+      <p>四、附註：</p>
+      <p>（一）受處分人如對本處分不服，得依訴願法第14條第1項、第58條第1項規定，自本函送達之次日起30日內，檢送訴願書至本部，由本部層轉訴願管轄機關行政院提起訴願。</p>
+      <p>（二）訴願人繕具訴願書，應載明第56條第1項所列事項，由訴願人或代理人簽名或蓋章；並依同條第2項規定，檢附本函影本。</p>
+    </div>
+  </template>
+
+  <script>
+    // ===== Utilities =====
+    const TSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTOJR30cTwoZzjlFDJfks9u_4RNe5jjyceMVMnetuWsvUgYSZAYuKFOZqvRfrTbejHs8H31YDoIc2iX/pub?gid=1411787074&single=true&output=tsv';
+
+    const $ = (id) => document.getElementById(id);
+
+    const pad6 = (str) => String(str || '').replace(/\D/g, '').padStart(6, '0');
+
+    function parseYMD(dateStr) {
+      if (!dateStr) return null;
+      const s = String(dateStr).trim();
+      const m = s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+      if (!m) return null;
+      const [_, y, mo, d] = m.map(Number);
+      const dt = new Date(y, mo - 1, d);
+      if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null; // invalid
+      return dt;
+    }
+
+    function toROC(dt) {
+      if (!dt) return '';
+      const rocY = dt.getFullYear() - 1911;
+      const m = dt.getMonth() + 1;
+      const d = dt.getDate();
+      return `${rocY}年${m}月${d}日`;
+    }
+
+    function addYearsYMD(dateStr, years) {
+      const dt = parseYMD(dateStr);
+      if (!dt) return '';
+      const y = dt.getFullYear() + Number(years || 0);
+      const res = new Date(y, dt.getMonth(), dt.getDate());
+      const mm = String(res.getMonth() + 1).padStart(2, '0');
+      const dd = String(res.getDate()).padStart(2, '0');
+      return `${res.getFullYear()}/${mm}/${dd}`;
+    }
+
+    function escapeHtml(text) {
+      return String(text ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function tpl(str, data) {
+      return str.replace(/\{\{(.*?)\}\}/g, (_, k) => escapeHtml(data[k.trim()] ?? ''));
+    }
+
+    // ===== State =====
+    let header = [];
+    let rows = [];
+    let indexByLicense = new Map();
+    let ready = false;
+
+    // ===== DOM refs =====
+    const form = $('licenseForm');
+    const btnSearch = $('btnSearch');
+    const btnExtend = $('btnExtend');
+    const statusEl = $('status');
+    const fullLicenseEl = $('fullLicense');
+    const resultEl = $('result');
+
+    // ===== Data loading =====
+    init();
+
+    async function init() {
+      restrictNumberField();
+      await loadTSV();
+      btnSearch.disabled = false;
+      btnExtend.disabled = false;
+      statusEl.textContent = '資料已載入。';
+      ready = true;
+    }
+
+    function restrictNumberField() {
+      const number = $('number');
+      number.addEventListener('input', () => {
+        number.value = number.value.replace(/\D/g, '').slice(0, 6);
+      });
+    }
+
+    async function loadTSV() {
+      try {
+        const res = await fetch(TSV_URL, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = (await res.text()).trim();
+        const trows = text.split(/\r?\n/).map(r => r.split('\t'));
+        header = trows[0] || [];
+        rows = trows.slice(1);
+        indexByLicense = new Map();
+        for (let i = 0; i < rows.length; i++) {
+          const key = (rows[i][0] || '').trim();
+          if (key) indexByLicense.set(key, i);
+        }
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = '載入資料失敗，請稍後再試。';
+      }
+    }
+
+    // ===== Core logic =====
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!ready) return;
+      const license = buildLicenseFromForm();
+      fullLicenseEl.textContent = license;
+      renderLookup(license);
+    });
+
+    btnExtend.addEventListener('click', () => {
+      if (!ready) return;
+      const license = buildLicenseFromForm();
+      fullLicenseEl.textContent = license;
+      renderExtendDoc(license);
+    });
+
+    function buildLicenseFromForm() {
+      const agency = $('agency').value;
+      const type = $('type').value; // 製、輸、陸輸
+      const level = $('level').value; // 壹登、壹、空白
+      const number = pad6($('number').value);
+      return `${agency}醫器${type}${level}字第${number}號`;
+    }
+
+    function getRowByLicense(license) {
+      const idx = indexByLicense.get((license || '').trim());
+      if (idx == null) return null;
+      return rows[idx];
+    }
+
+    function rowToObj(row) {
+      if (!row) return null;
+      const obj = {};
+      for (let i = 0; i < header.length; i++) obj[header[i]] = row[i] ?? '';
+      return obj;
+    }
+
+    function renderLookup(license) {
+      resultEl.innerHTML = '';
+      const row = getRowByLicense(license);
+      if (!row) {
+        resultEl.textContent = '查無資料';
+        return;
+      }
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const trh = document.createElement('tr');
+      header.forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        trh.appendChild(th);
+      });
+      thead.appendChild(trh);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      const tr = document.createElement('tr');
+      row.forEach(cell => {
+        const td = document.createElement('td');
+        td.textContent = cell ?? '';
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+      table.appendChild(tbody);
+
+      resultEl.appendChild(table);
+    }
+
+    function renderExtendDoc(license) {
+      resultEl.innerHTML = '';
+      const row = getRowByLicense(license);
+      if (!row) {
+        resultEl.textContent = '查無資料，無法產生展延案文稿。';
+        return;
+      }
+      const lic = rowToObj(row);
+
+      // 來文日期（民國）
+      const submitDateStr = $('submitDate').value; // yyyy-mm-dd
+      const submitDT = parseYMD(submitDateStr);
+      const submitROC = toROC(submitDT);
+
+      // 有效期 +5年 -> 民國日期
+      const validTo = addYearsYMD(lic['有效日期'], 5);
+      const validROC = toROC(parseYMD(validTo));
+
+      // 收據描述
+      let receipt = $('receiptNumber').value.trim();
+      const receiptDesc = receipt ? `及編號${receipt}繳款收據正本各1份` : '正本1份';
+
+      const doc = {
+        '申請商名稱': lic['申請商名稱'] || '',
+        '中文品名': lic['中文品名'] || '',
+        '許可證字號': lic['許可證字號'] || '',
+        '來文日期ROC': submitROC,
+        '案號': $('docNum').value || '',
+        '有效期限ROC': validROC,
+        '收據敘述': receiptDesc,
+      };
+
+      const tplEl = $('docTemplate');
+      const html = tpl(tplEl.innerHTML, doc);
+      resultEl.innerHTML = html;
+    }
+  </script>
+</body>
+</html>
