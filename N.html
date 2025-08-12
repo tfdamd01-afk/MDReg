@@ -350,6 +350,7 @@
       let submitName = $('submitName').value.trim();
       if (submitName != "") {
         submitName = `${submitName}號`;
+        submitName = submitName.replaceAll("號號","號");
       }
       
       const doc = {
